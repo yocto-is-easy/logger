@@ -1,0 +1,9 @@
+[Unit]
+Description=Logger for MIDF services
+
+[Service]
+ExecStart=/usr/bin/logger-service
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
