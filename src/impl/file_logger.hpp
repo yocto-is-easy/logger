@@ -14,6 +14,7 @@ class file_logger
 {
 private:
     std::string m_logFilePath;
+    lrrp::thread_pool<std::string> m_asyncMessageWriter;
 
     std::string get_timestamp() {
         auto now = chrono::system_clock::now();
@@ -34,24 +35,37 @@ private:
         return ss.str();
     }
 
+    std::string format_msg(const std::string& str) {
+        return "[" + get_timestamp() + "] " + str + "\n";
+    }
+
 public:
     file_logger(std::string logFilePath = "/dev/kmsg")
-        : m_logFilePath(logFilePath) {
+        : m_logFilePath(logFilePath)
+        , m_asyncMessageWriter(1) {
+        m_asyncMessageWriter.set_worker([this](std::string&& data) { this->log_writer(std::move(data)); });
         if(!fs::exists(fs::path(m_logFilePath))) {
             fs::create_directories(fs::path(m_logFilePath).parent_path());
             std::ofstream log_file(m_logFilePath);
         }
     }
 
-    void log(std::string msg) {
+    void log_writer(std::string&& data) {
         std::ofstream logFile;
 
         logFile.open(m_logFilePath, std::fstream::app);
         if(logFile.is_open()) {
-            std::string data = "[" + get_timestamp() + "] " + msg + "\n";
             logFile << data;
             logFile.close();
-            return;
         }
+    }
+
+    void log(const std::string& msg) {
+        log_writer(format_msg(msg));
+    }
+
+    void log_async(const std::string& msg) {
+        std::string data = format_msg(msg);
+        m_asyncMessageWriter.enqueue(std::move(data));
     }
 };
