@@ -10,3 +10,4 @@ MIDF_DECL_FUNC(bool, logger, log, std::string/*who*/, std::string/*message*/);
 
 // async logger
 MIDF_DECL_FUNC(bool, logger, alog, std::string/*who*/, std::string/*message*/);
+MIDF_DECL_FUNC(bool, logger, set_max_file_size, uint64_t);
