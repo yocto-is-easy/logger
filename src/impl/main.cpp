@@ -5,10 +5,12 @@
 #include <logger.hpp>
 
 #include "file_logger.hpp"
+#include "log_config.hpp"
 
 using namespace std;
 
-const std::string DEFAULT_ALOG_FILEPATH = "/var/mocto/alog";
+const std::string DEFAULT_ALOG_FILEPATH = "/var/mocto/async_log";
+const std::string DEFAULT_ALOG_CONFIG_PATH = "/etc/mocto/async_log_conf.ini";
 
 INIT_MIDF_SERVER(logger)
 
@@ -27,7 +29,8 @@ MIDF_IMPL_FUNC(bool, logger, set_max_file_size, uint64_t) (uint64_t size) {
 }
 
 int main() {
-    fl_async = std::make_unique<file_logger>(DEFAULT_ALOG_FILEPATH);
+    log_config cfg(DEFAULT_ALOG_CONFIG_PATH);
+    fl_async = std::make_unique<file_logger>(cfg, DEFAULT_ALOG_FILEPATH);
 
     START_MIDF_SERVER(logger);
 }

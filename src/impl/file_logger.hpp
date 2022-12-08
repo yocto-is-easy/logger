@@ -7,6 +7,8 @@
 #include <sstream>
 #include <filesystem>
 
+#include "log_config.hpp"
+
 namespace fs = std::filesystem;
 namespace chrono = std::chrono;
 
@@ -20,6 +22,11 @@ enum class time_precision {
 const fs::path DEV_NULL = "/dev/null";
 const uint64_t DEFAULT_MAX_FILE_SIZE = 100'000; // 100KB
 
+const std::string CLEAR_FILE_PATH = "ClearFilePath";
+const std::string CURRENT_LOG_FILE_PATH = "CurrentLogFilePath";
+const std::string PREV_LOG_FILE = "PrevLogFile";
+const std::string CURRENT_FILE_SIZE = "CurrentFileSize";
+
 class file_logger
 {
 private:
@@ -30,21 +37,29 @@ private:
     fs::path m_prevLogFile;
     uint64_t m_maxFileSize;
 
+    log_config& m_logConfig;
 public:
-    file_logger(const std::string& logFilePath = "/dev/kmsg")
+    file_logger(log_config& logConfig, const std::string& logFilePath = "/dev/kmsg")
         : m_asyncMessageWriter(1)
         , m_clearFilePath(logFilePath)
         , m_currentLogFilePath(format_path(m_clearFilePath))
         , m_currentFileSize(0)
         , m_prevLogFile(DEV_NULL)
-        , m_maxFileSize(DEFAULT_MAX_FILE_SIZE) {
+        , m_maxFileSize(DEFAULT_MAX_FILE_SIZE)
+        , m_logConfig(logConfig) {
         m_asyncMessageWriter.set_worker([this](std::string&& data) { this->log_writer(std::move(data)); });
         if(!fs::exists(fs::path(m_currentLogFilePath))) {
-            fs::create_directories(fs::path(m_currentLogFilePath).parent_path());
-            std::ofstream log_file;
-            log_file.open(m_currentLogFilePath);
-            if(log_file.is_open()) {
-                log_file.close();
+            if(m_logConfig.load()) {
+                load_cfg();
+            } else {
+                fs::create_directories(fs::path(m_currentLogFilePath).parent_path());
+                std::ofstream log_file;
+                log_file.open(m_currentLogFilePath);
+                if(log_file.is_open()) {
+                    log_file.close();
+                }
+
+                save_cfg();
             }
         }
     }
@@ -69,6 +84,8 @@ public:
             m_currentFileSize += data.size();
             logFile.close();
         }
+
+        save_cfg();
     }
 
     void log(const std::string& msg) {
@@ -85,6 +102,22 @@ public:
     }
 
 private:
+    void load_cfg() {
+        m_clearFilePath = m_logConfig.get_field<std::string>(CLEAR_FILE_PATH);
+        m_currentLogFilePath = m_logConfig.get_field<std::string>(CURRENT_LOG_FILE_PATH);
+        m_prevLogFile = m_logConfig.get_field<std::string>(PREV_LOG_FILE);
+        m_currentFileSize = m_logConfig.get_field<uint64_t>(CURRENT_FILE_SIZE);
+    }
+
+    void save_cfg() {
+        m_logConfig.set_field(CLEAR_FILE_PATH, m_clearFilePath);
+        m_logConfig.set_field(CURRENT_LOG_FILE_PATH, m_currentLogFilePath);
+        m_logConfig.set_field(PREV_LOG_FILE, m_prevLogFile);
+        m_logConfig.set_field(CURRENT_FILE_SIZE, m_currentFileSize);
+
+        m_logConfig.save();
+    }
+
     std::string get_timestamp(time_precision tp = time_precision::Ns) {
         auto now = chrono::system_clock::now();
 
