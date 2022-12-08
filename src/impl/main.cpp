@@ -8,19 +8,9 @@
 
 using namespace std;
 
-const std::string DEFAULT_LOG_FILEPATH = "/var/mocto/log";
 const std::string DEFAULT_ALOG_FILEPATH = "/var/mocto/alog";
 
 INIT_MIDF_SERVER(logger)
-
-MIDF_IMPL_FUNC(bool, logger, log, std::string/*who*/, std::string/*message*/)
-    (std::string who, std::string msg) {
-    static file_logger fl(DEFAULT_LOG_FILEPATH);
-    std::string data = who + ": " + msg;
-    fl.log(data);
-
-    return true;
-}
 
 unique_ptr<file_logger> fl_async;
 MIDF_IMPL_FUNC(bool, logger, alog, std::string/*who*/, std::string/*message*/)
